@@ -1,0 +1,88 @@
+.orders-container {
+    background-color: #1a1a2e;
+    padding: 20px;
+    border-radius: 10px;
+    color: #ffffff;
+    max-width: calc(100% + 195px); 
+    height: 640px;
+  }
+  
+  .orders-title {
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 20px;
+    color: #ffffff;
+  }
+  
+  .orders-filter {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  
+  .orders-filter .ant-input {
+    background-color: #0f3460;
+    color: white;
+    border: 1px solid #00a8cc;
+  }
+  
+  .orders-filter .ant-input::placeholder {
+    color: #cccccc;
+  }
+  
+  .orders-filter .ant-select-selector {
+    background-color: #0f3460 !important;
+    color: white !important;
+    border: 1px solid #00a8cc !important;
+  }
+  
+  .orders-filter .ant-select-selection-item {
+    color: white !important;
+  }
+  
+  .orders-filter .ant-select-arrow {
+    color: white !important;
+  }
+  
+  .ant-table {
+    background: #16213e !important;
+  }
+  
+  .ant-table-thead > tr > th {
+    background-color: #0f3460 !important;
+    color: #ffffff !important;
+    font-weight: bold;
+  }
+  
+  .ant-table-tbody > tr > td {
+    background-color: #1a1a2e !important;
+    color: white !important;
+  }
+  
+  .ant-table-tbody > tr:hover > td {
+    background-color: #0f3460 !important;
+  }
+  
+  .ant-pagination-item {
+    background-color: #0f3460 !important;
+    border: none !important;
+  }
+  
+  .ant-pagination-item a {
+    color: white !important;
+  }
+  
+  .ant-pagination-item-active {
+    background-color: #00a8cc !important;
+  }
+  
+  .ant-pagination-item-active a {
+    color: black !important;
+  }
+  
+  .ant-tag {
+    font-weight: bold;
+    padding: 5px 10px;
+  }
+  
