@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Table, Button, Modal, Form, Input, Upload, Image, message } from "antd";
 import { UploadOutlined, EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { getAllBanners, searchBanners, addBanner, updateBanner, deleteBanner } from "../api/Banner";
+import { BASE_URL_IMAGE } from "../api/configs";
 
 const BannerManagement = () => {
   const [banners, setBanners] = useState([]);
@@ -12,14 +14,44 @@ const BannerManagement = () => {
   const [form] = Form.useForm();
   const [searchText, setSearchText] = useState("");
 
-  // Xử lý tìm kiếm
-  const handleSearch = (e) => {
-    const value = e.target.value.toLowerCase();
-    setSearchText(value);
-    setFilteredBanners(banners.filter((banner) => banner.adText.toLowerCase().includes(value)));
+  const fetchBanners = async () => {
+    try {
+      const data = await getAllBanners();
+      setBanners(data);
+      setFilteredBanners(data);
+    } catch (error) {
+      message.error("Không thể tải danh sách banner");
+    }
   };
 
-  // Validate file ảnh
+  useEffect(() => {
+    fetchBanners();
+  }, []);
+
+  useEffect(() => {
+    if (selectedBanner && isEditModalOpen) {
+      form.setFieldsValue({
+        text: selectedBanner.text,
+      });
+    }
+  }, [selectedBanner, isEditModalOpen, form]);
+
+  const handleSearch = async (e) => {
+    const value = e.target.value.toLowerCase();
+    setSearchText(value);
+
+    try {
+      if (value.trim() === "") {
+        setFilteredBanners(banners);
+      } else {
+        const result = await searchBanners(value);
+        setFilteredBanners(result);
+      }
+    } catch (error) {
+      message.error("Lỗi khi tìm kiếm banner");
+    }
+  };
+
   const beforeUpload = (file) => {
     const isJpgOrPng = file.type === "image/jpeg" || file.type === "image/png";
     if (!isJpgOrPng) {
@@ -34,36 +66,36 @@ const BannerManagement = () => {
     return isJpgOrPng && isLt2M;
   };
 
-  // Xử lý thêm banner
-  const handleAdd = (values) => {
-    if (!values.image || values.image.fileList.length === 0) {
-      message.error("Vui lòng chọn ảnh!");
-      return;
+  const handleAdd = async (values) => {
+    try {
+      const file = values.image.file.originFileObj;
+      const text = values.adText;
+
+      await addBanner(file, text);
+
+      message.success("🎉 Thêm banner thành công!");
+      setIsModalOpen(false);
+      form.resetFields();
+      fetchBanners();
+    } catch (error) {
+      message.error("❌ Không thể thêm banner");
     }
-    const newBanner = {
-      id: banners.length + 1,
-      image: URL.createObjectURL(values.image.file.originFileObj),
-      adText: values.adText,
-    };
-    setBanners([...banners, newBanner]);
-    setFilteredBanners([...banners, newBanner]);
-    setIsModalOpen(false);
   };
 
-  // Xử lý cập nhật banner
-  const handleEdit = (values) => {
-    const updatedBanners = banners.map((b) =>
-      b.id === selectedBanner.id
-        ? {
-            ...b,
-            adText: values.adText,
-            image: fileList.length > 0 ? URL.createObjectURL(fileList[0].originFileObj) : b.image,
-          }
-        : b
-    );
-    setBanners(updatedBanners);
-    setFilteredBanners(updatedBanners);
-    setIsEditModalOpen(false);
+  const handleEdit = async (values) => {
+    try {
+      const text = values.adText;
+      const file = fileList.length > 0 ? fileList[0].originFileObj : null;
+
+      await updateBanner(selectedBanner.id, file, text);
+
+      message.success("✅ Cập nhật banner thành công!");
+      setIsEditModalOpen(false);
+      setFileList([]);
+      fetchBanners();
+    } catch (error) {
+      message.error("❌ Không thể cập nhật banner");
+    }
   };
 
   return (
@@ -86,20 +118,39 @@ const BannerManagement = () => {
             title: "Banner",
             dataIndex: "image",
             key: "image",
-            render: (src) => <Image width={150} src={src} />,
+            render: (src) => <Image width={150} src={`${BASE_URL_IMAGE}${src}`} />,
           },
           {
             title: "Quảng cáo",
-            dataIndex: "adText",
-            key: "adText",
+            dataIndex: "text",
+            key: "text",
           },
           {
             title: "Tùy chỉnh",
             key: "actions",
             render: (_, record) => (
               <>
-                <Button icon={<EditOutlined />} onClick={() => setSelectedBanner(record) || setIsEditModalOpen(true)} style={{ marginRight: 8 }} />
-                <Button icon={<DeleteOutlined />} danger onClick={() => setBanners(banners.filter((b) => b.id !== record.id))} />
+                <Button
+                  icon={<EditOutlined />}
+                  onClick={() => {
+                    setSelectedBanner(record);
+                    setIsEditModalOpen(true);
+                  }}
+                  style={{ marginRight: 8 }}
+                />
+                <Button
+                  icon={<DeleteOutlined />}
+                  danger
+                  onClick={async () => {
+                    try {
+                      await deleteBanner(record.id);
+                      message.success("🗑️ Đã xoá banner!");
+                      fetchBanners();
+                    } catch (error) {
+                      message.error("❌ Xoá banner thất bại!");
+                    }
+                  }}
+                />
               </>
             ),
           },
@@ -111,10 +162,24 @@ const BannerManagement = () => {
       />
 
       {/* Modal Thêm Mới */}
-      <Modal title="Thêm Banner" open={isModalOpen} onCancel={() => setIsModalOpen(false)} onOk={() => form.submit()}>
+      <Modal
+        title="Thêm Banner"
+        open={isModalOpen}
+        onCancel={() => {
+          setIsModalOpen(false);
+          form.resetFields();
+        }}
+        onOk={() => form.submit()}
+      >
         <Form form={form} onFinish={handleAdd} layout="vertical">
           <Form.Item label="Chọn Ảnh" name="image" rules={[{ required: true, message: "Vui lòng chọn ảnh!" }]}>
-            <Upload beforeUpload={beforeUpload} listType="picture" maxCount={1}>
+            <Upload
+              beforeUpload={beforeUpload}
+              listType="picture"
+              maxCount={1}
+              fileList={fileList}
+              onChange={({ fileList }) => setFileList(fileList)}
+            >
               <Button icon={<UploadOutlined />}>Chọn ảnh</Button>
             </Upload>
           </Form.Item>
@@ -125,15 +190,30 @@ const BannerManagement = () => {
       </Modal>
 
       {/* Modal Chỉnh Sửa */}
-      <Modal title="Chỉnh Sửa Banner" open={isEditModalOpen} onCancel={() => setIsEditModalOpen(false)} onOk={() => form.submit()}>
+      <Modal
+        title="Chỉnh Sửa Banner"
+        open={isEditModalOpen}
+        onCancel={() => {
+          setIsEditModalOpen(false);
+          form.resetFields();
+          setFileList([]);
+        }}
+        onOk={() => form.submit()}
+      >
         <Form form={form} onFinish={handleEdit} layout="vertical">
-          {selectedBanner && <Image width={200} src={selectedBanner.image} />}
+          {selectedBanner && <Image width={200} src={`${BASE_URL_IMAGE}${selectedBanner.image}`} />}
           <Form.Item label="Thay đổi ảnh" name="image">
-            <Upload beforeUpload={beforeUpload} listType="picture" maxCount={1} fileList={fileList} onChange={({ fileList }) => setFileList(fileList)}>
+            <Upload
+              beforeUpload={beforeUpload}
+              listType="picture"
+              maxCount={1}
+              fileList={fileList}
+              onChange={({ fileList }) => setFileList(fileList)}
+            >
               <Button icon={<UploadOutlined />}>Chọn ảnh mới</Button>
             </Upload>
           </Form.Item>
-          <Form.Item label="Nội dung quảng cáo" name="adText" rules={[{ required: true, message: "Nhập nội dung!" }, { max: 255, message: "Tối đa 255 ký tự!" }]}>
+          <Form.Item label="Nội dung quảng cáo" name="text" rules={[{ required: true, message: "Nhập nội dung!" }, { max: 255, message: "Tối đa 255 ký tự!" }]}>
             <Input.TextArea />
           </Form.Item>
         </Form>

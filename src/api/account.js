@@ -13,7 +13,7 @@ const getRefreshToken = () => localStorage.getItem("refreshToken");
 // Đăng nhập
 const login = async (email, password) => {
   try {
-    const response = await API.post("/checkLogin", null, {
+    const response = await API.post("/auth/checkLogin", null, {
       params: { email, password },
     });
 
@@ -27,6 +27,24 @@ const login = async (email, password) => {
     return { error: "Sai tài khoản hoặc mật khẩu hoặc lỗi server" };
   }
 };
+
+
+// const login = async (email, password) => {
+//   try {
+//     const response = await API.post("/auth/checkLogin", null, {
+//       params: { email, password },
+//     });
+
+//     if (response.data.accessToken) {
+//       saveTokens(response.data.accessToken, response.data.refreshToken);
+//     }
+
+//     return response.data;
+//   } catch (error) {
+//     console.error("Lỗi đăng nhập:", error.response?.data || error.message);
+//     return { error: "Sai tài khoản hoặc mật khẩu hoặc lỗi server" };
+//   }
+// };
 
 // Làm mới token
 const refreshAccessToken = async () => {
@@ -51,8 +69,8 @@ const refreshAccessToken = async () => {
 const requestWithAuth = async (method, url, data = null) => {
   try {
     let accessToken = getAccessToken();
-    console.log("🔍 Token được gửi đi:", accessToken); // Thêm log để kiểm tra
-    const headers = { Authorization: `Bearer ${accessToken}` };
+    console.log("Token được gửi đi:", accessToken); // Thêm log để kiểm tra
+    const headers = { Authorization: `${accessToken}` };
 
     const response = await API.request({ method, url, data, headers });
     return response.data;
@@ -81,4 +99,27 @@ const startTokenRefreshInterval = () => {
   }, 15 * 60 * 1000);
 };
 
-export { login, refreshAccessToken, requestWithAuth, startTokenRefreshInterval };
+// lấy thông tin tài khoản
+const getUserInfo = async () => {
+  const token = localStorage.getItem("accessToken");
+  try {
+    const response = await fetch("http://localhost:8080/api/v2/web/account/information", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `${token}`,
+      },
+    });
+
+    if (!response.ok) throw new Error(`Lỗi từ server: ${response.status}`);
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin tài khoản:", error);
+  }
+};
+
+
+
+export { login, refreshAccessToken, requestWithAuth, startTokenRefreshInterval, getUserInfo };

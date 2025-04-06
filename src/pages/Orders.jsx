@@ -1,117 +1,84 @@
-import React, { useState } from "react";
-import { Table, Tag, Image, Input, Space, Select } from "antd";
+import React, { useState, useEffect } from "react";
+import { Table, Tag, Image, Input, Space, Select, message } from "antd";
 import "../css/Order.css";
+import { getOrderItemsByStatus } from "../api/Order";
+import { BASE_URL_IMAGE } from "../api/configs";
 
 const { Search } = Input;
 const { Option } = Select;
 
 function Orders() {
-  const sampleOrders = [
-    {
-      id: 1,
-      customer: "Lương Tấn Huy",
-      address: "Hà Nội, Việt Nam",
-      phone: "0123456789",
-      image: "https://danangbest.com/upload_content/bun-bo-da-nang-1.webp",
-      product: "Bún bò huế",
-      quantity: 1,
-      price: "25,000 VNĐ",
-      createdAt: "2025-03-12",
-      status: "Chưa Thanh Toán",
-      shipper: "Nguyễn Văn A",
-      shipperPhone: "0912345678",
-      shipperEmail: "nguyenvana@gmail.com",
-      shipperStatus: "Đã nhận đơn",
-    },
-    {
-      id: 2,
-      customer: "Nguyễn Thành Can",
-      address: "TP. HCM, Việt Nam",
-      phone: "0987654321",
-      image: "https://photo.znews.vn/w660/Uploaded/neg_esfjeee/2019_03_15/top32quananngonodanang_1.jpg",
-      product: "Bánh xèo",
-      quantity: 2,
-      price: "50,000 VNĐ",
-      createdAt: "2025-03-10",
-      status: "Đã Thanh Toán",
-      shipper: "Trần Văn B",
-      shipperPhone: "0987654321",
-      shipperEmail: "tranvanb@gmail.com",
-      shipperStatus: "Chưa nhận đơn",
-    },
-    {
-      id: 3,
-      customer: "Nguyễn Thành Nhật",
-      address: "TP. HCM, Việt Nam",
-      phone: "0987654321",
-      image: "https://photo.znews.vn/w660/Uploaded/neg_esfjeee/2019_03_15/top32quananngonodanang_1.jpg",
-      product: "Bánh xèo",
-      quantity: 2,
-      price: "50,000 VNĐ",
-      createdAt: "2025-03-10",
-      status: "Đã Thanh Toán",
-      shipper: "Trần Văn B",
-      shipperPhone: "0987654321",
-      shipperEmail: "tranvanb@gmail.com",
-      shipperStatus: "Chưa nhận đơn",
-    },
-    {
-      id: 4,
-      customer: "Phan Thị Tấn Nhật",
-      address: "TP. HCM, Việt Nam",
-      phone: "0987654321",
-      image: "https://photo.znews.vn/w660/Uploaded/neg_esfjeee/2019_03_15/top32quananngonodanang_1.jpg",
-      product: "Bánh xèo",
-      quantity: 2,
-      price: "50,000 VNĐ",
-      createdAt: "2025-03-10",
-      status: "Đã Thanh Toán",
-      shipper: "Trần Văn Hưng",
-      shipperPhone: "0987654321",
-      shipperEmail: "tranvanb@gmail.com",
-      shipperStatus: "Chưa nhận đơn",
-    },
-    {
-      id: 5,
-      customer: "Nguyễn Thành Can",
-      address: "TP. HCM, Việt Nam",
-      phone: "0987654321",
-      image: "https://photo.znews.vn/w660/Uploaded/neg_esfjeee/2019_03_15/top32quananngonodanang_1.jpg",
-      product: "Bánh xèo",
-      quantity: 2,
-      price: "50,000 VNĐ",
-      createdAt: "2025-03-10",
-      status: "Đã Thanh Toán",
-      shipper: "Trần Văn B",
-      shipperPhone: "0987654321",
-      shipperEmail: "tranvanb@gmail.com",
-      shipperStatus: "Chưa nhận đơn",
-    },
-    {
-      id: 6,
-      customer: "Nguyễn Thành Can",
-      address: "TP. HCM, Việt Nam",
-      phone: "0987654321",
-      image: "https://photo.znews.vn/w660/Uploaded/neg_esfjeee/2019_03_15/top32quananngonodanang_1.jpg",
-      product: "Bánh xèo",
-      quantity: 2,
-      price: "50,000 VNĐ",
-      createdAt: "2025-03-10",
-      status: "Đã Hủy",
-      shipper: "Trần Văn B",
-      shipperPhone: "0987654321",
-      shipperEmail: "tranvanb@gmail.com",
-      shipperStatus: "Chưa nhận đơn",
-    },
-  ];
-
-  const [filteredOrders, setFilteredOrders] = useState(sampleOrders);
+  const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
+  useEffect(() => {
+    fetchOrders();
+  }, [statusFilter]);
+
+  const fetchOrders = async () => {
+    try {
+      const status = statusFilter === "Đã Thanh Toán" ? 1
+                   : statusFilter === "Chưa Thanh Toán" ? 0
+                   : statusFilter === "Đang Giao" ? 2
+                   : statusFilter === "Đã Hủy" ? 3
+                   : null;
+
+      const data = await getOrderItemsByStatus(status ?? 1);
+
+      const mapped = data.map((item, index) => {
+        const order = item.orderDTO || {};
+        const account = order.accountDTO || {};
+        const product = item.productDTO || {};
+        console.log(`Đơn hàng #${index} - orderDTO:`, order);
+
+      
+        return {
+          id: index,
+          customer: account.username || "N/A",
+          address: account.address || "N/A",
+          phone: account.phone || "N/A",
+          product: product.name || "Sản phẩm",
+          quantity: item.quantity,
+          price: `${item.price.toLocaleString()} đ`,
+          createdAt: order.createdAt?.slice(0, 10),
+          image: product.image ? `${BASE_URL_IMAGE}${product.image}` : "",
+          shipper: order.shipperName || "Không có",
+          shipperPhone: order.shipperPhone || "N/A",
+          shipperEmail: order.shipperEmail || "N/A",
+          shipperStatus: order.shipperStatus || "Chưa nhận đơn",
+          status: convertStatus(order.status),
+        };
+      });
+      
+
+      setOrders(mapped);
+      setFilteredOrders(mapped);
+    } catch (err) {
+      console.error("Lỗi tải đơn hàng:", err);
+      message.error("Không thể tải danh sách đơn hàng!");
+    }
+  };
+
+  const convertStatus = (statusCode) => {
+    switch (Number(statusCode)) {
+      case 0:
+        return "Chưa Thanh Toán";
+      case 1:
+        return "Đã Thanh Toán";
+      case 2:
+        return "Đang Giao";
+      case 3:
+        return "Đã Hủy";
+      default:
+        return "Không xác định";
+    }
+  };
+
   const handleSearch = (value) => {
     setSearchText(value);
-    const filteredData = sampleOrders.filter((order) =>
+    const filteredData = orders.filter((order) =>
       order.customer.toLowerCase().includes(value.toLowerCase())
     );
     setFilteredOrders(filteredData);
@@ -119,37 +86,16 @@ function Orders() {
 
   const handleFilterChange = (value) => {
     setStatusFilter(value);
-    if (value) {
-      const filteredData = sampleOrders.filter((order) => order.status === value);
-      setFilteredOrders(filteredData);
-    } else {
-      setFilteredOrders(sampleOrders);
-    }
-  };
-
-  const getStatusTag = (status) => {
-    switch (status) {
-      case "Chưa Thanh Toán":
-        return <Tag color="yellow">Chưa Thanh Toán</Tag>;
-      case "Đã Thanh Toán":
-        return <Tag color="green">Đã Thanh Toán</Tag>;
-      case "Đang Giao":
-        return <Tag color="blue">Đang Giao</Tag>;
-      case "Đã Hủy":
-        return <Tag color="red">Đã hủy</Tag>
-      default:
-        return <Tag>{status}</Tag>;
-    }
   };
 
   const getShipperStatusTag = (status) => {
     switch (status) {
       case "Đã nhận đơn":
-        return <Tag color="green">Đã nhận đơn</Tag>;
+        return <Tag color="green">{status}</Tag>;
       case "Chưa nhận đơn":
-        return <Tag color="orange">Chưa nhận đơn</Tag>;
+        return <Tag color="orange">{status}</Tag>;
       case "Bị hủy đơn":
-        return <Tag color="red">Bị hủy đơn</Tag>;
+        return <Tag color="red">{status}</Tag>;
       default:
         return <Tag>{status}</Tag>;
     }
@@ -176,7 +122,7 @@ function Orders() {
       key: "product",
       render: (_, record) => (
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <Image width={50} src={record.image} />
+          <Image width={50} src={record.image} fallback="https://via.placeholder.com/50" />
           <div>
             <strong>{record.product}</strong>
             <br />
@@ -204,12 +150,6 @@ function Orders() {
           {getShipperStatusTag(record.shipperStatus)}
         </div>
       ),
-    },
-    {
-      title: "Tình Trạng",
-      dataIndex: "status",
-      key: "status",
-      render: getStatusTag,
     },
   ];
 

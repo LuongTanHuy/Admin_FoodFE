@@ -1,69 +1,69 @@
-import React, { useState } from "react";
-import { Table, Input, Image, Typography } from "antd";
+import React, { useState, useEffect, useCallback } from "react";
+import { Table, Input, Image, Typography, message } from "antd";
+import { BASE_URL_IMAGE } from "../api/configs";
+import { getStores, searchStores } from "../api/Store";
+import { SearchOutlined } from "@ant-design/icons";
 
-const { Search } = Input;
 const { Text } = Typography;
 
-const storeData = [
-  {
-    id: 1,
-    name: "Karaoke",
-    address: "Đ.29 Tháng 3/170 P.Hòa Xuân, Cẩm Lệ, Đà Nẵng",
-    email: "hungdangnguyen001@gmail.com",
-    phone: "0905123456",
-    createdAt: "2024-06-10 01:23:32",
-    image: "https://dulichtoday.vn/wp-content/uploads/2023/07/karaoke-da-nang-6.jpg", 
-    categories: ["Ăn Vặt", "Cơm", "Nước", "Bún"],
-    totalSold: 1,
-    revenue: "14.0 VNĐ",
-  },
-  {
-    id: 2,
-    name: "New Phương Đông Club",
-    address: "01 An Thượng 18, P. Mỹ An, Quận Ngũ Hành Sơn, Đà Nẵng",
-    email: "huydeen002@gmail.com",
-    phone: "0815880596",
-    createdAt: "2024-06-09 01:23:32",
-    image: "https://images2.thanhnien.vn/zoom/700_438/528068263637045248/2023/3/9/new-phuong-dong-1-1678350342793669823826-0-50-381-660-crop-1678350737195403385062.jpg",
-    categories: ["Kẹo", "Nước khoái", "Bột", "Bóng cười"],
-    totalSold: 100,
-    revenue: "100.000.000.000 VNĐ",
-  },
-  {
-    id: 3,
-    name: "New MDM Club",
-    address: "01 Lê Hồng Phong - TP Hải Phòng",
-    email: "huydeen002@gmail.com",
-    phone: "0815880596",
-    createdAt: "2024-06-09 01:23:32",
-    image: "https://chillvietnam.com/wp-content/uploads/2022/12/new-mdm-club-thien-duong-an-choi-so-1-dat-cang-hai-phong-1671619642.jpeg",
-    categories: ["Trà Sữa", "Nước Ngọt"],
-    totalSold: 0,
-    revenue: "0.0 VNĐ",
-  },
-  {
-    id: 4,
-    name: "Tiger Sugar",
-    address: "01 An Thượng 18, P. Mỹ An, Quận Ngũ Hành Sơn, Đà Nẵng",
-    email: "huydeen002@gmail.com",
-    phone: "0815880596",
-    createdAt: "2024-06-09 01:23:32",
-    image: "https://images2.thanhnien.vn/zoom/700_438/528068263637045248/2023/3/9/new-phuong-dong-1-1678350342793669823826-0-50-381-660-crop-1678350737195403385062.jpg",
-    categories: ["Trà Sữa", "Nước Ngọt"],
-    totalSold: 0,
-    revenue: "0.0 VNĐ",
-  },
-];
-
 const StoreList = () => {
-  const [filteredStores, setFilteredStores] = useState(storeData);
+  const [stores, setStores] = useState([]);
+  const [searchText, setSearchText] = useState("");
 
-  const handleSearch = (value) => {
-    const filtered = storeData.filter((store) =>
-      store.name.toLowerCase().includes(value.toLowerCase())
-    );
-    setFilteredStores(filtered);
+  const [filteredStores, setFilteredStores] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const mapStoreData = (store) => ({
+    id: store.id,
+    image: store.image || "imagedefault.jpg",
+    name: store.name || "Không rõ",
+    address: store.address || "N/A",
+    email: store.email || "N/A",
+    phone: store.phone || "N/A",
+    createdAt: store.createdAt || store.created_at
+      ? new Date(store.createdAt || store.created_at).toLocaleDateString("vi-VN")
+      : "Không xác định",
+    listCategory: store.listCategory || store.categories || [],
+    totalSold: store.totalOrdersSold || store.totalSold || 0,
+    revenue: store.revenue || 0,
+  });
+
+  const fetchStoreList = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getStores();
+      const mapped = data.map(mapStoreData);
+      setStores(mapped);
+      setFilteredStores(mapped);
+    } catch (error) {
+      console.error("Lỗi khi tải danh sách cửa hàng:", error);
+      message.error("Không thể tải danh sách cửa hàng!");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStoreList();
+  }, [fetchStoreList]);
+
+  const handleSearch = async (value) => {
+    const keyword = value.trim();
+    setSearchText(value); // ✅ Cập nhật input
+    if (!keyword) {
+      setFilteredStores(stores);
+    } else {
+      try {
+        const results = await searchStores(keyword);
+        const mapped = results.map(mapStoreData);
+        setFilteredStores(mapped);
+      } catch (error) {
+        console.error("Lỗi khi tìm kiếm cửa hàng:", error);
+        message.error("Lỗi khi tìm kiếm cửa hàng!");
+      }
+    }
   };
+  
 
   const columns = [
     {
@@ -71,25 +71,32 @@ const StoreList = () => {
       dataIndex: "image",
       key: "image",
       align: "center",
-      render: (src) => <Image width={150} src={src} />,
+      render: (src) => (
+        <Image
+          width={150}
+          src={`${BASE_URL_IMAGE}${src}`}
+          alt="store"
+          fallback={`${BASE_URL_IMAGE}imagedefault.jpg`}
+        />
+      ),
     },
     {
-        title: "Thông tin",
-        key: "info",
-        render: (_, record) => (
-          <div style={{ color: "#fff" }}> 
-            <Text strong style={{ color: "#fff" }}>Tên cửa hàng: {record.name}</Text> <br />
-            <Text style={{ color: "#fff" }}>Địa chỉ: {record.address}</Text> <br />
-            <Text style={{ color: "#fff" }}>Email: {record.email}</Text> <br />
-            <Text style={{ color: "#fff" }}>Số điện thoại: {record.phone}</Text> <br />
-            <Text style={{ color: "#fff" }}>Ngày tạo: {record.createdAt}</Text>
-          </div>
-        ),
+      title: "Thông tin",
+      key: "info",
+      render: (_, record) => (
+        <div style={{ color: "#fff" }}>
+          <Text strong style={{ color: "#fff" }}>Tên cửa hàng: {record.name}</Text><br />
+          <Text style={{ color: "#fff" }}>Địa chỉ: {record.address}</Text><br />
+          <Text style={{ color: "#fff" }}>Email: {record.email}</Text><br />
+          <Text style={{ color: "#fff" }}>Số điện thoại: {record.phone}</Text><br />
+          <Text style={{ color: "#fff" }}>Ngày tạo: {record.createdAt}</Text>
+        </div>
+      ),
     },
     {
       title: "Danh mục kinh doanh",
-      dataIndex: "categories",
-      key: "categories",
+      dataIndex: "listCategory",
+      key: "listCategory",
       align: "center",
       render: (categories) => (
         <div style={{ whiteSpace: "pre-wrap" }}>
@@ -116,19 +123,22 @@ const StoreList = () => {
   return (
     <div style={{ padding: 20, backgroundColor: "#1a1a2e", color: "#fff", borderRadius: 10 }}>
       <h2 style={{ color: "#fff" }}>DANH SÁCH CỬA HÀNG</h2>
-      <Search
+      <Input
         placeholder="Tìm kiếm cửa hàng..."
-        onSearch={handleSearch}
-        enterButton
+        onChange={(e) => handleSearch(e.target.value)}
+        value={searchText}
         style={{ marginBottom: 20, width: 300 }}
+        suffix={<SearchOutlined style={{ color: "#aaa" }} />}
       />
+
       <Table
         columns={columns}
         dataSource={filteredStores}
         rowKey="id"
         pagination={{ pageSize: 3 }}
         bordered
-        style={{ color: "#fff" }} 
+        loading={loading}
+        style={{ color: "#fff" }}
       />
     </div>
   );

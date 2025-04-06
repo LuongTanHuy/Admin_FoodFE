@@ -12,7 +12,7 @@
 
 .sidebar {
     color: white;
-    height: 100vh;
+    height: 120vh;
     width: 250px;
     background-color: #0D1B2A;
     flex-shrink: 0;
@@ -77,7 +77,6 @@
     background-color: #121826;
     color: white;
     padding: 20px;
-    min-height: 100vh;
   }
   
   /* Table */

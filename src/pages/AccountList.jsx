@@ -1,49 +1,75 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Table, Input, Tag, Button, Image, message } from "antd";
 import { LockOutlined, UnlockOutlined } from "@ant-design/icons";
 import "antd/dist/reset.css";
+import { getAllAccounts, searchAccounts } from "../api/ListAccount";
+import { BASE_URL_IMAGE } from "../api/configs";
 
 const { Search } = Input;
 
 const AccountList = () => {
   const [searchText, setSearchText] = useState("");
+  const [accounts, setAccounts] = useState([]);
 
-  const [accounts, setAccounts] = useState([
-    {
-      id: 1,
-      image: "https://yt3.googleusercontent.com/Whzpflv2Sw5qMkttNMvWlsgE9x5_-Aj2wzTfSC4e-Wp-XqsWXGADov-5Qd2xpg7-FG880ZuVNw=s900-c-k-c0x00ffffff-no-rj",
-      name: "Người Mua Hàng",
-      email: "muahang@gmail.com",
-      phone: "09035543678",
-      joinDate: "2024-04-15",
-      address: "272A Ngũ Hành Sơn, Đà Nẵng",
-      role: "Người Dùng",
-      totalOrders: 9,
-      deliveredOrders: 5,
-      status: "active",
-    },
-    {
-      id: 2,
-      image: "https://i1.sndcdn.com/artworks-Wk2DhnQk2kdW6b51-lzVqhw-t500x500.jpg",
-      name: "Admin",
-      email: "admin@gmail.com",
-      phone: "0822034255",
-      joinDate: "2024-04-16",
-      address: "272B Ngũ Hành Sơn, Đà Nẵng",
-      role: "Quản Trị Viên",
-      totalOrders: 0,
-      deliveredOrders: 4,
-      status: "active",
-    },
-  ]);
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
 
-  const validateSearch = (value) => {
-    const regex = /^[a-zA-Z0-9\s]*$/;
+  const fetchAccounts = async () => {
+    try {
+      const data = await getAllAccounts();
+      const mapped = data.map((acc) => ({
+        id: acc.id,
+        name: acc.username || "Không rõ",
+        email: acc.email || "Chưa có",
+        phone: acc.phone || "N/A",
+        image: acc.image || "imagedefault.jpg",
+        joinDate: acc.created_at ? new Date(acc.created_at).toLocaleDateString("vi-VN") : "Không xác định",
+        address: acc.address || "Không có địa chỉ",
+        role: acc.role || "user",
+        status: acc.permission ? "active" : "inactive",
+        totalOrders: acc.totalOrderBought || 0,
+        deliveredOrders: acc.totalOrderDelivered || 0,
+      }));
+      setAccounts(mapped);
+    } catch (error) {
+      message.error("Không thể tải danh sách tài khoản!");
+    }
+  };
+
+  const handleSearch = async (e) => {
+    const value = e.target.value;
+    setSearchText(value);
+    const regex = /^[a-zA-Z0-9\sÀ-ỹ]*$/;
+
     if (!regex.test(value)) {
       message.error("Từ khóa tìm kiếm không hợp lệ!");
-      return false;
+      return;
     }
-    return true;
+
+    try {
+      if (value.trim() === "") {
+        fetchAccounts();
+      } else {
+        const results = await searchAccounts(value);
+        const mapped = results.map((acc) => ({
+          id: acc.id,
+          name: acc.username || "Không rõ",
+          email: acc.email || "Chưa có",
+          phone: acc.phone || "N/A",
+          image: acc.image || "imagedefault.jpg",
+          joinDate: acc.created_at ? new Date(acc.created_at).toLocaleDateString("vi-VN") : "Không xác định",
+          address: acc.address || "Không có địa chỉ",
+          role: acc.role || "user",
+          status: acc.permission ? "active" : "inactive",
+          totalOrders: acc.totalOrderBought || 0,
+          deliveredOrders: acc.totalOrderDelivered || 0,
+        }));
+        setAccounts(mapped);
+      }
+    } catch (error) {
+      message.error("Lỗi khi tìm kiếm tài khoản");
+    }
   };
 
   const toggleStatus = (id) => {
@@ -60,7 +86,7 @@ const AccountList = () => {
       dataIndex: "image",
       key: "image",
       align: "center",
-      render: (src) => <Image width={50} src={src} />,
+      render: (src) => <Image width={50} src={`${BASE_URL_IMAGE}${src}`} fallback={`${BASE_URL_IMAGE}imagedefault.jpg`} />,
     },
     {
       title: "Thông tin",
@@ -81,7 +107,7 @@ const AccountList = () => {
       dataIndex: "role",
       key: "role",
       align: "center",
-      render: (role) => <Tag color={role === "Người Dùng" ? "blue" : "red"}>{role}</Tag>,
+      render: (role) => <Tag color={role === "user" ? "blue" : role === "admin" ? "red" : "green"}>{role}</Tag>,
     },
     {
       title: "Tổng đơn hàng đã mua",
@@ -121,25 +147,22 @@ const AccountList = () => {
     },
   ];
 
-  const filteredAccounts = accounts.filter(
-    (account) => validateSearch(searchText) && account.name.toLowerCase().includes(searchText.toLowerCase())
-  );
-
   return (
     <div style={{ padding: 20, backgroundColor: "#1e1e2e", color: "white", borderRadius: 10 }}>
       <h2 style={{ color: "white", fontWeight: "bold" }}>DANH SÁCH TÀI KHOẢN</h2>
       <Search
         placeholder="Tìm kiếm..."
-        onChange={(e) => setSearchText(e.target.value)}
+        onChange={handleSearch}
+        value={searchText}
         style={{ width: 300, marginBottom: 16 }}
       />
 
-      {filteredAccounts.length === 0 ? (
+      {accounts.length === 0 ? (
         <p style={{ color: "white", textAlign: "center" }}>Không có tài khoản nào phù hợp.</p>
       ) : (
         <Table
           columns={columns}
-          dataSource={filteredAccounts}
+          dataSource={accounts}
           rowKey="id"
           pagination={{ pageSize: 4 }}
           bordered
